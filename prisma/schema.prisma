@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// A person the household wants to protect from smog exposure.
+model FamilyMember {
+  id         String   @id @default(cuid())
+  name       String
+  // child | teen | adult | senior
+  ageGroup   String
+  // comma-separated keys: asthma, heart, copd, pregnancy, diabetes, smoker, none
+  conditions String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// A saved AI-generated daily routine plan.
+model Routine {
+  id            String   @id @default(cuid())
+  city          String
+  aqi           Int
+  aqiLabel      String
+  memberSummary String
+  // markdown content of the routine
+  content       String
+  createdAt     DateTime @default(now())
+}
+
+// A saved AI-generated indoor air action plan.
+model IndoorPlan {
+  id        String   @id @default(cuid())
+  city      String
+  aqi       Int
+  homeInfo  String
+  content   String
+  createdAt DateTime @default(now())
+}
