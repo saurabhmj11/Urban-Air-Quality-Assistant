@@ -74,3 +74,7 @@ tool-results/
 .zscripts/
 agent-ctx/
 submission-guide.docx
+
+# --- Local production artifacts (video pipeline + UI QC shots; never push) ---
+/scripts/video/
+/scripts/ui/
