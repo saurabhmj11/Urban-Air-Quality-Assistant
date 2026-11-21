@@ -27,9 +27,14 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
 const FALLBACK_TTL_MS = 60 * 1000; // retry live data sooner after a failure
 
 // Node >= 23 disables Happy Eyeballs by default; without an IPv6 route,
-// fetch to dual-stack hosts (Open-Meteo) fails with ETIMEDOUT. Re-enable it.
+// fetch to dual-stack hosts (Open-Meteo) fails with ETIMEDOUT. Re-enable it
+// and raise the per-address attempt timeout (250ms default can abort a TCP
+// handshake that would otherwise succeed). Also set in instrumentation.ts.
 if (typeof net.setDefaultAutoSelectFamily === "function") {
   net.setDefaultAutoSelectFamily(true);
+}
+if (typeof net.setDefaultAutoSelectFamilyAttemptTimeout === "function") {
+  net.setDefaultAutoSelectFamilyAttemptTimeout(3000);
 }
 
 const cache = new Map<string, { at: number; ttl: number; data: AirQualitySnapshot }>();
