@@ -74,6 +74,7 @@ src/
 
 | Endpoint | Method | Purpose |
 | --- | --- | --- |
+| `/api` | GET | Health check (service status + upstream reachability) |
 | `/api/air-quality?city=delhi` | GET | Live snapshot: current AQI, pollutants, 48h hourly, best windows |
 | `/api/chat` | POST | `{ city, messages[] }` → context-grounded reply |
 | `/api/routine` | GET / POST | History / `{ city, dayType, mode }` → generated + saved routine |
