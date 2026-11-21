@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { sensitivityFor } from "@/lib/aqi";
+import { memberCreateSchema, parseBody } from "@/lib/validation";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
-const AGE_GROUPS = ["child", "teen", "adult", "senior"];
-const CONDITIONS = ["asthma", "heart", "copd", "pregnancy", "diabetes", "smoker", "none"];
+/** 30 member writes per 5 minutes per IP (generous — this is local data). */
+const RATE_LIMIT = 30;
+const RATE_WINDOW_MS = 5 * 60 * 1000;
 
 export async function GET() {
   try {
@@ -20,23 +23,35 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  // --- Rate limit ---
+  const rl = rateLimit(`family:${clientIp(req.headers)}`, RATE_LIMIT, RATE_WINDOW_MS);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: `Too many changes. Try again in ${rl.resetInSec}s.` },
+      { status: 429, headers: { "Retry-After": String(rl.resetInSec) } }
+    );
+  }
+
+  // --- Validate ---
+  let raw: unknown;
   try {
-    const body = await req.json();
-    const name = String(body.name ?? "").trim().slice(0, 40);
-    const ageGroup = String(body.ageGroup ?? "adult");
-    const rawConditions: string[] = Array.isArray(body.conditions) ? body.conditions : [];
+    raw = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  const parsed = parseBody(memberCreateSchema, raw);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+  const { name, ageGroup, conditions } = parsed.value;
 
-    if (!name) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
-    }
-    if (!AGE_GROUPS.includes(ageGroup)) {
-      return NextResponse.json({ error: "Invalid age group" }, { status: 400 });
-    }
-    const valid = rawConditions.filter((c) => CONDITIONS.includes(c) && c !== "none");
-    const conditions = valid.length > 0 ? valid.join(",") : "";
-
+  try {
     const member = await db.familyMember.create({
-      data: { name, ageGroup, conditions },
+      data: {
+        name: name.trim(),
+        ageGroup,
+        conditions: (conditions ?? []).filter((c) => c !== "none").join(","),
+      },
     });
     return NextResponse.json(
       { ...member, sensitivity: sensitivityFor(member.ageGroup, member.conditions) },

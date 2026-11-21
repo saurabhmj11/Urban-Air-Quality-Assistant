@@ -9,10 +9,16 @@ import { db } from "@/lib/db";
 import { getAirQuality, snapshotToContext } from "@/lib/air-quality-server";
 import { sensitivityFor, SENSITIVITY_BAND_META } from "@/lib/aqi";
 
-// Singleton ZAI client stored on globalThis to survive hot reloads.
-const globalForZAI = globalThis as unknown as { zaiInstance?: any };
+/** Singleton ZAI client stored on globalThis to survive hot reloads. */
+type ZaIClient = InstanceType<typeof ZAI>;
+const globalForZAI = globalThis as unknown as { zaiInstance?: ZaIClient };
 
-export async function getZAI() {
+/** Minimal shape of the chat completion response we consume. */
+interface ChatCompletionResponse {
+  choices?: { message?: { content?: string } }[];
+}
+
+export async function getZAI(): Promise<ZaIClient> {
   if (!globalForZAI.zaiInstance) {
     globalForZAI.zaiInstance = await ZAI.create();
   }
@@ -33,10 +39,10 @@ export async function chatComplete(
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const zai = await getZAI();
-      const completion = await zai.chat.completions.create({
+      const completion = (await zai.chat.completions.create({
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
         thinking: { type: "disabled" },
-      });
+      })) as ChatCompletionResponse;
       const reply = completion?.choices?.[0]?.message?.content;
       if (reply && reply.trim().length > 0) return reply;
       throw new Error("Empty AI response");

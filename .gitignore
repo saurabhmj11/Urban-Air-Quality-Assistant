@@ -64,3 +64,13 @@ Caddyfile
 /mini-services/
 /tests/
 /tool-results/
+
+# BreathEasy — keep the repo lean (<10 MB rule)
+dev.log
+server.log
+/db/*.db*
+db/*.db*
+tool-results/
+.zscripts/
+agent-ctx/
+submission-guide.docx

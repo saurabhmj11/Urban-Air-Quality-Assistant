@@ -1,26 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { buildAqiContext, chatComplete, BASE_SYSTEM_PROMPT } from "@/lib/ai";
-import { CITIES } from "@/lib/aqi";
+import { indoorPlanRequestSchema, parseBody } from "@/lib/validation";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 90;
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const cityId = CITIES.some((c) => c.id === body.city) ? body.city : "delhi";
-    const rooms = Math.min(10, Math.max(1, Number(body.rooms) || 2));
-    const hasPurifier = Boolean(body.hasPurifier);
-    const hasAC = Boolean(body.hasAC);
-    const budget = ["zero", "low", "mid", "high"].includes(body.budget)
-      ? body.budget
-      : "low";
-    const cooking = ["gas", "electric", "induction", "wood-or-biomass"].includes(body.cooking)
-      ? body.cooking
-      : "gas";
-    const notes = String(body.notes ?? "").slice(0, 300);
+/** 6 indoor plans per 5 minutes per IP. */
+const RATE_LIMIT = 6;
+const RATE_WINDOW_MS = 5 * 60 * 1000;
 
-    const aqiCtx = await buildAqiContext(cityId);
+export async function POST(req: NextRequest) {
+  // --- Rate limit ---
+  const rl = rateLimit(`indoor:${clientIp(req.headers)}`, RATE_LIMIT, RATE_WINDOW_MS);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: `Slow down a little — try again in ${rl.resetInSec}s.` },
+      { status: 429, headers: { "Retry-After": String(rl.resetInSec) } }
+    );
+  }
+
+  // --- Validate ---
+  let raw: unknown;
+  try {
+    raw = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  const parsed = parseBody(indoorPlanRequestSchema, raw);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+  const { city, rooms, hasPurifier, hasAC, budget, cooking, notes } = parsed.value;
+
+  try {
+    const aqiCtx = await buildAqiContext(city);
 
     const budgetText: Record<string, string> = {
       zero: "₹0 — only free behaviour changes (ventilation timing, wet mopping, sealing with cloth/tape)",

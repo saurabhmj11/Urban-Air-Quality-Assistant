@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Moon,
   RefreshCw,
+  Route,
   Sun,
   UsersRound,
   Wind,
@@ -23,6 +24,7 @@ import { ChatTab } from "@/components/air/chat-tab";
 import { RoutinesTab } from "@/components/air/routines-tab";
 import { IndoorTab } from "@/components/air/indoor-tab";
 import { FamilyTab } from "@/components/air/family-tab";
+import { CommuteTab } from "@/components/air/commute-tab";
 import { AirQualitySnapshot, MemberDTO } from "@/components/air/types";
 import { CITIES, CATEGORY_INFO } from "@/lib/aqi";
 
@@ -169,6 +171,9 @@ export function BreathEasyApp() {
             <TabsTrigger value="routines" className="gap-1.5 px-3 py-2 text-xs sm:text-sm">
               <CalendarCheck2 className="h-4 w-4" /> Routines
             </TabsTrigger>
+            <TabsTrigger value="commute" className="gap-1.5 px-3 py-2 text-xs sm:text-sm">
+              <Route className="h-4 w-4" /> Commute
+            </TabsTrigger>
             <TabsTrigger value="indoor" className="gap-1.5 px-3 py-2 text-xs sm:text-sm">
               <House className="h-4 w-4" /> Indoor Hacks
             </TabsTrigger>
@@ -207,6 +212,14 @@ export function BreathEasyApp() {
               cityId={cityId}
               aqi={snapshot?.current.aqi ?? null}
               aqiLabel={cat?.label ?? null}
+              familyCount={family.length}
+            />
+          </TabsContent>
+
+          <TabsContent value="commute">
+            <CommuteTab
+              cityId={cityId}
+              cityName={snapshot?.city.name ?? CITIES.find((c) => c.id === cityId)?.name ?? ""}
               familyCount={family.length}
             />
           </TabsContent>

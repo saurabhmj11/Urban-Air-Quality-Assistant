@@ -1,35 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildAqiContext, buildFamilyContext, chatComplete, ChatMessage, BASE_SYSTEM_PROMPT } from "@/lib/ai";
-import { CITIES } from "@/lib/aqi";
+import { chatRequestSchema, parseBody } from "@/lib/validation";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
+/** 20 coach messages per 5 minutes per IP. */
+const RATE_LIMIT = 20;
+const RATE_WINDOW_MS = 5 * 60 * 1000;
+
 export async function POST(req: NextRequest) {
+  // --- Rate limit ---
+  const rl = rateLimit(`chat:${clientIp(req.headers)}`, RATE_LIMIT, RATE_WINDOW_MS);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: `The coach needs a breather. Try again in ${rl.resetInSec}s.` },
+      { status: 429, headers: { "Retry-After": String(rl.resetInSec) } }
+    );
+  }
+
+  // --- Validate ---
+  let raw: unknown;
   try {
-    const body = await req.json();
-    const cityId = CITIES.some((c) => c.id === body.city) ? body.city : "delhi";
-    const history: ChatMessage[] = Array.isArray(body.messages)
-      ? body.messages
-          .filter(
-            (m: { role?: string; content?: string }) =>
-              m &&
-              (m.role === "user" || m.role === "assistant") &&
-              typeof m.content === "string" &&
-              m.content.trim().length > 0
-          )
-          .slice(-12) // keep context tight
-          .map((m: { role: "user" | "assistant"; content: string }) => ({
-            role: m.role,
-            content: m.content.slice(0, 2000),
-          }))
-      : [];
+    raw = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  const parsed = parseBody(chatRequestSchema, raw);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+  const { city, messages } = parsed.value;
 
-    if (history.length === 0) {
-      return NextResponse.json({ error: "No message provided" }, { status: 400 });
-    }
-
+  try {
     const [aqiCtx, familyCtx] = await Promise.all([
-      buildAqiContext(cityId),
+      buildAqiContext(city),
       buildFamilyContext(),
     ]);
 
@@ -43,7 +48,7 @@ export async function POST(req: NextRequest) {
 
     const reply = await chatComplete([
       { role: "assistant", content: systemPrompt },
-      ...history,
+      ...messages,
     ]);
 
     return NextResponse.json({ reply });
