@@ -88,9 +88,24 @@ bun install
 bun run db:push        # create SQLite schema
 bun run dev            # http://localhost:3000
 bun run lint           # ESLint (clean)
+bun test               # unit tests for the domain logic
 ```
 
 No API keys required — Open-Meteo is keyless and the GenAI SDK is pre-configured.
+
+## Testing
+
+29 unit tests (`src/lib/aqi.test.ts`, `bun test`) cover the pure domain logic that everything else builds on:
+
+- **CPCB sub-index math** — exact band-boundary values for every pollutant, linear interpolation inside bands, clamping at 500, negative/NaN guards, monotonicity sweeps
+- **Category bands** — all six CPCB bands inclusive of upper bounds, complete colour/advice metadata
+- **City catalogue** — unique ids, valid Indian coordinates, safe fallback for unknown ids
+- **Best-window finder** — clean-stretch detection, ≥2-hour minimum, threshold fallback (≤100 → ≤200 → least-bad), best-first sorting, 3-window cap, midnight wrap
+- **Sensitivity scoring** — age-group points, condition points, unknown-key tolerance, 100-point clamping, band mapping
+- **Risk verdicts** — the band × air-category escalation matrix
+- **Offline simulation** — determinism, diurnal winter-inversion shape (night > afternoon), plausible pollutant magnitudes
+
+The strategy: everything that turns raw numbers into advice is a pure, tested function; API routes stay thin validation + orchestration layers around them.
 
 ## Limitations & next steps
 
