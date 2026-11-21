@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import {
   Activity,
   BotMessageSquare,
@@ -87,24 +87,34 @@ export function BreathEasyApp() {
   const cat = snapshot ? CATEGORY_INFO[snapshot.current.category] : null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div
+      className="flex min-h-screen flex-col"
+      style={{ "--aqi-accent": cat?.color ?? "#14b8a6" } as CSSProperties}
+    >
+      {/* Ambient AQI-reactive backdrop (decorative, behind all content) */}
+      <div className="ambient-bg" aria-hidden />
+
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md">
+      <header className="header-hairline sticky top-0 z-40 border-b bg-background/90 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
-          <a href="#" className="flex items-center gap-2" aria-label="BreathEasy home">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm">
+          <a href="#" className="group flex items-center gap-2" aria-label="BreathEasy home">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/30 ring-1 ring-white/25 transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
               <Wind className="h-4.5 w-4.5" />
             </span>
             <span className="hidden text-lg font-bold tracking-tight sm:block">
-              Breath<span className="text-primary">Easy</span>
+              Breath<span className="text-gradient-brand">Easy</span>
             </span>
           </a>
 
           {/* Live AQI chip */}
           {cat && snapshot ? (
             <span
-              className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold tabular-nums"
-              style={{ backgroundColor: `${cat.color}1f`, color: cat.color }}
+              className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold tabular-nums transition-shadow duration-500"
+              style={{
+                backgroundColor: `${cat.color}1f`,
+                color: cat.color,
+                boxShadow: `0 0 0 1px ${cat.color}38, 0 4px 16px -4px ${cat.color}59`,
+              }}
               title={`AQI ${snapshot.current.aqi} (${cat.label}) in ${snapshot.city.name}`}
             >
               <span className="live-dot h-1.5 w-1.5 rounded-full" style={{ backgroundColor: cat.color }} />
@@ -162,33 +172,32 @@ export function BreathEasyApp() {
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:py-6">
         <Tabs value={tab} onValueChange={setTab} className="w-full">
           <TabsList className="custom-scroll mb-4 h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl p-1 sm:justify-center">
-            <TabsTrigger value="dashboard" className="gap-1.5 px-3 py-2 text-xs sm:text-sm">
-              <LayoutDashboard className="h-4 w-4" /> Dashboard
-            </TabsTrigger>
-            <TabsTrigger value="coach" className="gap-1.5 px-3 py-2 text-xs sm:text-sm">
-              <BotMessageSquare className="h-4 w-4" /> AI Coach
-            </TabsTrigger>
-            <TabsTrigger value="routines" className="gap-1.5 px-3 py-2 text-xs sm:text-sm">
-              <CalendarCheck2 className="h-4 w-4" /> Routines
-            </TabsTrigger>
-            <TabsTrigger value="commute" className="gap-1.5 px-3 py-2 text-xs sm:text-sm">
-              <Route className="h-4 w-4" /> Commute
-            </TabsTrigger>
-            <TabsTrigger value="indoor" className="gap-1.5 px-3 py-2 text-xs sm:text-sm">
-              <House className="h-4 w-4" /> Indoor Hacks
-            </TabsTrigger>
-            <TabsTrigger value="family" className="gap-1.5 px-3 py-2 text-xs sm:text-sm">
-              <UsersRound className="h-4 w-4" />
-              Family
-              {family.length > 0 && (
-                <span className="rounded-full bg-primary px-1.5 text-[10px] font-bold leading-4 text-primary-foreground">
-                  {family.length}
-                </span>
-              )}
-            </TabsTrigger>
+            {(
+              [
+                { value: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
+                { value: "coach", label: "AI Coach", Icon: BotMessageSquare },
+                { value: "routines", label: "Routines", Icon: CalendarCheck2 },
+                { value: "commute", label: "Commute", Icon: Route },
+                { value: "indoor", label: "Indoor Hacks", Icon: House },
+                { value: "family", label: "Family", Icon: UsersRound },
+              ] as const
+            ).map(({ value, label, Icon }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className="group gap-1.5 px-3 py-2 text-xs transition-all sm:text-sm data-[state=active]:bg-gradient-to-br data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-emerald-500/30"
+              >
+                <Icon className="h-4 w-4" /> {label}
+                {value === "family" && family.length > 0 && (
+                  <span className="rounded-full bg-primary/15 px-1.5 text-[10px] font-bold leading-4 text-primary group-data-[state=active]:bg-white/25 group-data-[state=active]:text-white">
+                    {family.length}
+                  </span>
+                )}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
-          <TabsContent value="dashboard" className="data-[state=active]:animate-in data-[state=active]:fade-in data-[state=active]:duration-300">
+          <TabsContent value="dashboard" className="data-[state=active]:animate-in data-[state=active]:fade-in data-[state=active]:slide-in-from-bottom-2 data-[state=active]:duration-300">
             <DashboardTab
               snapshot={snapshot}
               family={family}
@@ -198,7 +207,7 @@ export function BreathEasyApp() {
             />
           </TabsContent>
 
-          <TabsContent value="coach">
+          <TabsContent value="coach" className="data-[state=active]:animate-in data-[state=active]:fade-in data-[state=active]:slide-in-from-bottom-2 data-[state=active]:duration-300">
             <ChatTab
               cityId={cityId}
               cityName={snapshot?.city.name ?? CITIES.find((c) => c.id === cityId)?.name ?? ""}
@@ -207,7 +216,7 @@ export function BreathEasyApp() {
             />
           </TabsContent>
 
-          <TabsContent value="routines">
+          <TabsContent value="routines" className="data-[state=active]:animate-in data-[state=active]:fade-in data-[state=active]:slide-in-from-bottom-2 data-[state=active]:duration-300">
             <RoutinesTab
               cityId={cityId}
               aqi={snapshot?.current.aqi ?? null}
@@ -216,7 +225,7 @@ export function BreathEasyApp() {
             />
           </TabsContent>
 
-          <TabsContent value="commute">
+          <TabsContent value="commute" className="data-[state=active]:animate-in data-[state=active]:fade-in data-[state=active]:slide-in-from-bottom-2 data-[state=active]:duration-300">
             <CommuteTab
               cityId={cityId}
               cityName={snapshot?.city.name ?? CITIES.find((c) => c.id === cityId)?.name ?? ""}
@@ -224,11 +233,11 @@ export function BreathEasyApp() {
             />
           </TabsContent>
 
-          <TabsContent value="indoor">
+          <TabsContent value="indoor" className="data-[state=active]:animate-in data-[state=active]:fade-in data-[state=active]:slide-in-from-bottom-2 data-[state=active]:duration-300">
             <IndoorTab cityId={cityId} />
           </TabsContent>
 
-          <TabsContent value="family">
+          <TabsContent value="family" className="data-[state=active]:animate-in data-[state=active]:fade-in data-[state=active]:slide-in-from-bottom-2 data-[state=active]:duration-300">
             <FamilyTab
               family={family}
               category={snapshot?.current.category ?? null}
@@ -239,7 +248,7 @@ export function BreathEasyApp() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-auto border-t bg-card/50">
+      <footer className="mt-auto border-t bg-card/50 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-1.5 px-4 py-4 text-center text-xs text-muted-foreground sm:flex-row sm:justify-between sm:text-left">
           <p className="flex items-center gap-1.5">
             <Activity className="h-3.5 w-3.5 text-primary" />

@@ -34,6 +34,7 @@ function PollutantCard({
   color,
   isDominant,
   infoOnly,
+  index = 0,
 }: {
   name: string;
   full: string;
@@ -43,10 +44,13 @@ function PollutantCard({
   color: string;
   isDominant: boolean;
   infoOnly: boolean;
+  index?: number;
 }) {
+  const delay = `${index * 70}ms`;
   return (
     <div
-      className="relative rounded-xl border bg-card p-3.5 transition-shadow hover:shadow-md"
+      className="animate-rise relative rounded-xl border bg-card p-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/40"
+      style={{ animationDelay: delay }}
       aria-label={`${name} ${value} ${unit}`}
     >
       {isDominant && (
@@ -70,8 +74,12 @@ function PollutantCard({
       </div>
       <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div
-          className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${Math.min(100, (subIndex / 500) * 100)}%`, backgroundColor: color }}
+          className="bar-grow h-full rounded-full"
+          style={{
+            width: `${Math.min(100, (subIndex / 500) * 100)}%`,
+            backgroundColor: color,
+            animationDelay: delay,
+          }}
         />
       </div>
       <p className="mt-1.5 text-[11px] text-muted-foreground" title={full}>
@@ -175,11 +183,11 @@ export function DashboardTab({
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Hero */}
-      <Card className="overflow-hidden border-border/70">
+      <Card className="animate-rise overflow-hidden border-border/70 shadow-sm">
         <div
           className="flex flex-col items-center gap-6 p-6 sm:flex-row sm:items-stretch sm:gap-8 sm:p-8"
           style={{
-            background: `linear-gradient(135deg, ${cat.color}14, transparent 55%)`,
+            background: `linear-gradient(135deg, ${cat.color}1a, transparent 60%), radial-gradient(85% 130% at 100% 0%, ${cat.color}17, transparent 55%)`,
           }}
         >
           <div className="flex shrink-0 flex-col items-center justify-center">
@@ -210,7 +218,10 @@ export function DashboardTab({
             </div>
 
             {/* Best windows */}
-            <div className="rounded-xl border bg-card/70 p-3.5">
+            <div
+              className="animate-rise rounded-xl border bg-card/70 p-3.5 backdrop-blur-sm"
+              style={{ animationDelay: "120ms" }}
+            >
               <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 <Sun className="h-3.5 w-3.5" /> Best outdoor windows (next 24h)
               </p>
@@ -242,7 +253,10 @@ export function DashboardTab({
 
             {/* Family risk strip */}
             {family.length > 0 ? (
-              <div className="rounded-xl border bg-card/70 p-3.5">
+              <div
+                className="animate-rise rounded-xl border bg-card/70 p-3.5 backdrop-blur-sm"
+                style={{ animationDelay: "200ms" }}
+              >
                 <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   <Users className="h-3.5 w-3.5" /> Your family today
                 </p>
@@ -270,7 +284,8 @@ export function DashboardTab({
             ) : (
               <button
                 onClick={onGoToFamily}
-                className="group flex w-full items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-3.5 text-left transition-colors hover:bg-primary/10"
+                className="animate-rise group flex w-full items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-3.5 text-left transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:shadow-lg hover:shadow-primary/10"
+                style={{ animationDelay: "200ms" }}
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary transition-transform group-hover:scale-110">
                   <UserRoundPlus className="h-4 w-4" />
@@ -291,16 +306,17 @@ export function DashboardTab({
 
       {/* Pollutants */}
       <section aria-label="Pollutant breakdown">
-        <h3 className="mb-2.5 flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+        <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
           <TrendingUp className="h-4 w-4" /> Pollutant breakdown
-          <span className="ml-1 text-xs font-normal">
-            (overall AQI driven by PM2.5 / PM10 / NO₂ / SO₂)
-          </span>
         </h3>
+        <p className="mb-4 text-xs text-muted-foreground/80">
+          Overall AQI is driven by PM2.5 / PM10 / NO₂ / SO₂
+        </p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {snapshot.current.pollutants.map((p) => (
+          {snapshot.current.pollutants.map((p, i) => (
             <PollutantCard
               key={p.key}
+              index={i}
               name={p.name}
               full={POLLUTANT_META[p.key].full}
               value={p.value}
@@ -315,7 +331,7 @@ export function DashboardTab({
       </section>
 
       {/* Trend chart */}
-      <Card>
+      <Card className="animate-rise" style={{ animationDelay: "260ms" }}>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-1.5 text-base">
             <Clock className="h-4 w-4 text-primary" />

@@ -1,10 +1,12 @@
 "use client";
 
+import { useCountUp } from "@/hooks/use-count-up";
 import { CATEGORY_INFO, CategoryKey } from "@/lib/aqi";
 
 /**
  * Semicircular AQI gauge (0–500, CPCB National AQI scale).
- * Dimmed category segments + a full-opacity value arc and needle.
+ * Dimmed category segments + tick marks + a full-opacity value arc and
+ * needle. The needle, arc and number sweep in together via a rAF count-up.
  */
 export function AqiGauge({
   aqi,
@@ -20,6 +22,8 @@ export function AqiGauge({
   const cx = 100;
   const cy = 100;
   const r = 78;
+
+  const display = useCountUp(aqi, 1100);
 
   const angleOf = (v: number) => 180 - (Math.min(500, Math.max(0, v)) / 500) * 180;
 
@@ -46,7 +50,7 @@ export function AqiGauge({
   ];
 
   const catColor = CATEGORY_INFO[category].color;
-  const needleAngle = angleOf(aqi);
+  const needleAngle = angleOf(display);
   const info = CATEGORY_INFO[category];
 
   return (
@@ -58,7 +62,7 @@ export function AqiGauge({
         role="img"
         aria-label={`Air quality index ${aqi}, ${info.label}`}
       >
-        {/* Category segments (dimmed) */}
+        {/* Category segments (dimmed, brighter in dark mode) */}
         {boundaries.map((b) => (
           <path
             key={b.key}
@@ -67,24 +71,44 @@ export function AqiGauge({
             strokeWidth={11}
             strokeLinecap="round"
             fill="none"
-            opacity={b.key === category ? 0.55 : 0.22}
+            className={b.key === category ? "opacity-55 dark:opacity-65" : "opacity-20 dark:opacity-32"}
           />
         ))}
-        {/* Value arc */}
-        <path
-          d={arc(180, needleAngle, r)}
-          stroke={catColor}
-          strokeWidth={11}
-          strokeLinecap="round"
-          fill="none"
-          style={{ filter: `drop-shadow(0 0 4px ${catColor}55)` }}
-        />
-        {/* Needle */}
+        {/* Boundary tick marks */}
+        {boundaries.map((b) => {
+          const a = angleOf(b.from);
+          const [x0, y0] = polar(a, r + 6.5);
+          const [x1, y1] = polar(a, r + 11);
+          return (
+            <line
+              key={`tick-${b.key}`}
+              x1={x0}
+              y1={y0}
+              x2={x1}
+              y2={y1}
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              className="text-foreground/25"
+            />
+          );
+        })}
+        {/* Value arc (sweeps with the count-up) */}
+        {display > 0 && (
+          <path
+            d={arc(180, needleAngle, r)}
+            stroke={catColor}
+            strokeWidth={11}
+            strokeLinecap="round"
+            fill="none"
+            style={{ filter: `drop-shadow(0 0 4px ${catColor}55)` }}
+          />
+        )}
+        {/* Needle (driven by the same count-up) */}
         <g
           style={{
             transform: `rotate(${90 - needleAngle}deg)`,
             transformOrigin: `${cx}px ${cy}px`,
-            transition: "transform 1.2s cubic-bezier(0.22, 1, 0.36, 1)",
           }}
         >
           <line
@@ -98,6 +122,8 @@ export function AqiGauge({
             className="text-foreground/70"
           />
         </g>
+        {/* Hub with soft glow */}
+        <circle cx={cx} cy={cy} r={9} fill={catColor} opacity={0.18} />
         <circle cx={cx} cy={cy} r={4.5} fill="currentColor" className="text-foreground/70" />
         {/* Scale labels */}
         <text x={polar(180, r + 12)[0]} y={polar(180, r + 12)[1] + 6} textAnchor="middle" className="fill-muted-foreground" fontSize={9}>
@@ -112,7 +138,7 @@ export function AqiGauge({
           AQI
         </span>
         <span className="text-5xl font-bold tabular-nums leading-none" style={{ color: catColor }}>
-          {aqi}
+          {display}
         </span>
         <span
           className="mt-2 rounded-full px-3 py-1 text-xs font-semibold"

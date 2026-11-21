@@ -222,3 +222,136 @@
 .ai-markdown hr {
   @apply my-3 border-border;
 }
+
+/* ---------------------------------------------------------------------------
+   BreathEasy design v2 — ambient depth & motion
+--------------------------------------------------------------------------- */
+
+/* Brand gradient text (wordmark, accents) */
+.text-gradient-brand {
+  background-image: linear-gradient(115deg, #10b981, #14b8a6 55%, #0891b2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Ambient AQI-reactive backdrop: two slow-drifting glows tinted with the
+   current AQI category color (--aqi-accent), set by the app shell.
+   Lives at z-index:-1 so it floats above the body background and below
+   all content. Purely decorative. */
+.ambient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.ambient-bg::before,
+.ambient-bg::after {
+  content: "";
+  position: absolute;
+  width: 44rem;
+  height: 44rem;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle at center,
+    color-mix(in oklab, var(--aqi-accent, #14b8a6) 60%, transparent),
+    transparent 68%
+  );
+  filter: blur(24px);
+  will-change: transform;
+}
+.ambient-bg::before {
+  top: -13rem;
+  left: -11rem;
+  opacity: 0.1;
+  animation: orb-drift-a 34s ease-in-out infinite alternate;
+}
+.ambient-bg::after {
+  right: -12rem;
+  bottom: -15rem;
+  opacity: 0.08;
+  animation: orb-drift-b 41s ease-in-out infinite alternate;
+}
+.dark .ambient-bg::before {
+  opacity: 0.17;
+}
+.dark .ambient-bg::after {
+  opacity: 0.13;
+}
+@keyframes orb-drift-a {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(6rem, 4rem, 0) scale(1.16);
+  }
+}
+@keyframes orb-drift-b {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.08);
+  }
+  to {
+    transform: translate3d(-5rem, -4rem, 0) scale(0.94);
+  }
+}
+
+/* Staggered card entrances */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-rise {
+  animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Pollutant bars growing from zero on mount */
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.bar-grow {
+  transform-origin: left center;
+  animation: grow-x 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* AQI-tinted hairline glow under the sticky header */
+.header-hairline {
+  position: relative;
+}
+.header-hairline::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--aqi-accent, #14b8a6) 50%, transparent),
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* Accessibility: calm everything down when the user asks for it */
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .bar-grow,
+  .ambient-bg::before,
+  .ambient-bg::after,
+  .live-dot,
+  .typing-dot {
+    animation: none !important;
+  }
+}
