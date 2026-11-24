@@ -10,7 +10,9 @@ import { getAirQuality, snapshotToContext } from "@/lib/air-quality-server";
 import { sensitivityFor, SENSITIVITY_BAND_META } from "@/lib/aqi";
 
 /** Singleton ZAI client stored on globalThis to survive hot reloads. */
-type ZaIClient = InstanceType<typeof ZAI>;
+// The SDK class has a private constructor, so InstanceType<typeof ZAI> fails
+// under strict checks; take the instance type from the async factory instead.
+type ZaIClient = Awaited<ReturnType<typeof ZAI.create>>;
 const globalForZAI = globalThis as unknown as { zaiInstance?: ZaIClient };
 
 /** Minimal shape of the chat completion response we consume. */

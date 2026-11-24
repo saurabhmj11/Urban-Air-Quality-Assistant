@@ -19,6 +19,7 @@ import {
   simulateCurrentPollutants,
   simulateHourlyPm25,
   subIndex,
+  type CategoryKey,
   type HourlyPoint,
 } from "./aqi";
 
@@ -88,7 +89,7 @@ describe("subIndex (CPCB NAQI breakpoints)", () => {
 
 describe("categoryOf", () => {
   it("assigns the six CPCB bands, inclusive of upper bounds", () => {
-    const cases: [number, string][] = [
+    const cases: Array<[number, CategoryKey]> = [
       [0, "good"],
       [50, "good"],
       [51, "satisfactory"],

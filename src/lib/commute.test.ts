@@ -19,6 +19,7 @@ import {
   planCommute,
   tripCo2Grams,
   type CommuteInput,
+  type TravelMode,
 } from "./commute";
 import {
   CITY_IDS,
@@ -28,6 +29,7 @@ import {
   memberCreateSchema,
   parseBody,
   routineRequestSchema,
+  type CityId,
 } from "./validation";
 import { CITIES } from "./aqi";
 
@@ -100,9 +102,10 @@ describe("zone catalogue", () => {
 describe("mode profiles", () => {
   it("has a profile for all eight modes with sane values", () => {
     const keys = MODES.map((m) => m.key).sort();
-    expect(keys).toEqual(
-      ["auto", "bus", "car", "carpool", "cycle", "metro", "scooter", "walk"].sort()
-    );
+    const expected: TravelMode[] = [
+      "auto", "bus", "car", "carpool", "cycle", "metro", "scooter", "walk",
+    ];
+    expect(keys).toEqual(expected.sort());
     for (const m of MODES) {
       expect(m.speedKmh).toBeGreaterThan(0);
       expect(m.detour).toBeGreaterThanOrEqual(1);
@@ -364,7 +367,10 @@ describe("fmtDuration", () => {
 
 describe("validation schemas", () => {
   it("CITY_IDS matches the aqi.ts city catalogue exactly", () => {
-    expect(new Set(CITY_IDS)).toEqual(new Set(CITIES.map((c) => c.id)));
+    // CityInfo.id is deliberately `string` (the two lists live in different
+    // modules to avoid an import cycle); narrow here to assert parity.
+    const cityIds = new Set(CITIES.map((c) => c.id as CityId));
+    expect(new Set(CITY_IDS)).toEqual(cityIds);
   });
 
   it("accepts a valid chat request and rejects bad roles / empty messages", () => {

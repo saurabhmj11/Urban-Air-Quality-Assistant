@@ -150,7 +150,9 @@ export function DashboardTab({
     }));
   }, [snapshot]);
 
-  const nowLabel = snapshot?.hourly.find((h) => h.future)?.label;
+  // First forecast hour = "now" boundary; derive the chart label (HH:mm) from
+  // the ISO time — HourlyPoint has no precomputed label field.
+  const nowLabel = snapshot?.hourly.find((h) => h.future)?.time.slice(11, 16);
 
   if (loading && !snapshot) {
     return (

@@ -50,7 +50,8 @@ export async function POST(req: NextRequest) {
       data: {
         name: name.trim(),
         ageGroup,
-        conditions: (conditions ?? []).filter((c) => c !== "none").join(","),
+        // Schema already rejects invalid values, so conditions are clean here.
+        conditions: (conditions ?? []).join(","),
       },
     });
     return NextResponse.json(
