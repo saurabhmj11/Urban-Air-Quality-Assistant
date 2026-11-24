@@ -110,7 +110,7 @@ function ChartTooltip({
   const cat = d.category;
   return (
     <div className="rounded-lg border bg-popover px-3 py-2 text-xs shadow-lg">
-      <p className="font-semibold">{d.label}</p>
+      <p className="font-semibold">{d.label.slice(11, 16)}</p>
       <p className="mt-1">
         AQI{" "}
         <span className="font-bold" style={{ color: CATEGORY_INFO[cat].color }}>
@@ -140,8 +140,12 @@ export function DashboardTab({
 
   const chartData = useMemo<ChartDatum[]>(() => {
     if (!snapshot) return [];
+    // Chart x-values use the full ISO hour so every category is UNIQUE —
+    // recharts categorical ReferenceLine lookups (the "now" marker) and
+    // cursor/tooltip matching break when HH:mm labels repeat across the
+    // past-24h / next-24h window. Ticks display HH:mm via tickFormatter.
     return snapshot.hourly.map((h) => ({
-      label: h.time.slice(11, 16),
+      label: h.time,
       aqi: h.aqi,
       pm25: h.pm25,
       category: h.category,
@@ -150,9 +154,8 @@ export function DashboardTab({
     }));
   }, [snapshot]);
 
-  // First forecast hour = "now" boundary; derive the chart label (HH:mm) from
-  // the ISO time — HourlyPoint has no precomputed label field.
-  const nowLabel = snapshot?.hourly.find((h) => h.future)?.time.slice(11, 16);
+  // First forecast hour = "now" boundary on the unique-label x axis.
+  const nowLabel = snapshot?.hourly.find((h) => h.future)?.time;
 
   if (loading && !snapshot) {
     return (
@@ -357,6 +360,7 @@ export function DashboardTab({
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
                 <XAxis
                   dataKey="label"
+                  tickFormatter={(v: string) => v.slice(11, 16)}
                   tick={{ fontSize: 11 }}
                   className="text-muted-foreground"
                   interval={5}
