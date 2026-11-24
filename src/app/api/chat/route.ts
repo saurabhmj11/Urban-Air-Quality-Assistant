@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildAqiContext, buildFamilyContext, chatComplete, ChatMessage, BASE_SYSTEM_PROMPT } from "@/lib/ai";
+import { buildAqiContext, buildFamilyContext, chatComplete, BASE_SYSTEM_PROMPT } from "@/lib/ai";
 import { chatRequestSchema, parseBody } from "@/lib/validation";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 

@@ -55,7 +55,20 @@ interface OpenMeteoResponse {
   };
 }
 
-async function fetchOnce(url: string): Promise<OpenMeteoResponse | null> {
+/** Shape after validating that the optional members are present. */
+type ValidatedOpenMeteo = OpenMeteoResponse & {
+  current: NonNullable<OpenMeteoResponse["current"]>;
+  hourly: NonNullable<OpenMeteoResponse["hourly"]>;
+};
+
+/** Runtime payload check that doubles as a TypeScript type guard. */
+function isCompletePayload(
+  json: OpenMeteoResponse
+): json is ValidatedOpenMeteo {
+  return Boolean(json.current && json.hourly && Array.isArray(json.hourly.pm2_5));
+}
+
+async function fetchOnce(url: string): Promise<ValidatedOpenMeteo | null> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) {
@@ -63,7 +76,7 @@ async function fetchOnce(url: string): Promise<OpenMeteoResponse | null> {
       return null;
     }
     const json = (await res.json()) as OpenMeteoResponse;
-    if (!json.current || !json.hourly || !Array.isArray(json.hourly.pm2_5)) {
+    if (!isCompletePayload(json)) {
       console.error("[air-quality] Open-Meteo payload incomplete");
       return null;
     }
@@ -74,7 +87,7 @@ async function fetchOnce(url: string): Promise<OpenMeteoResponse | null> {
   }
 }
 
-async function fetchOpenMeteo(city: CityInfo): Promise<OpenMeteoResponse | null> {
+async function fetchOpenMeteo(city: CityInfo): Promise<ValidatedOpenMeteo | null> {
   const url =
     `https://air-quality-api.open-meteo.com/v1/air-quality` +
     `?latitude=${city.lat}&longitude=${city.lon}` +
@@ -145,7 +158,7 @@ export async function getAirQuality(cityId: string): Promise<AirQualitySnapshot>
   let snapshot: AirQualitySnapshot;
   if (raw) {
     // Open-Meteo returns CO in µg/m³; CPCB uses mg/m³.
-    const cur = raw.current!;
+    const cur = raw.current;
     const pm25Now = cur.pm2_5 ?? 0;
     const pollutants = buildPollutants({
       pm25: pm25Now,
@@ -156,8 +169,8 @@ export async function getAirQuality(cityId: string): Promise<AirQualitySnapshot>
       co: (cur.carbon_monoxide ?? 500) / 1000,
     });
 
-    const nowKey = (cur.time ?? "").slice(0, 13); // "YYYY-MM-DDTHH"
-    const hours = raw.hourly!;
+    const nowKey = cur.time.slice(0, 13); // "YYYY-MM-DDTHH"
+    const hours = raw.hourly;
     const allHourly: HourlyPoint[] = [];
     for (let i = 0; i < hours.time.length; i++) {
       const t = hours.time[i];
@@ -222,5 +235,26 @@ export function snapshotToContext(s: AirQualitySnapshot): string {
     `Readings: ${poll}`,
     `Next 12h PM2.5-AQI forecast: ${trend}`,
     `Best outdoor windows today: ${windows}`,
+  ].join("\n");
+}
+
+/**
+ * Shorter variant used by the commute narration prompt, where the full
+ * reading list would crowd out the trip details. Shared here so every
+ * prompt is built from the same snapshot serializer.
+ */
+export function snapshotToContextBrief(s: AirQualitySnapshot): string {
+  const cat = CATEGORY_INFO[s.current.category];
+  const trend = s.hourly
+    .filter((p) => p.future)
+    .slice(0, 8)
+    .map((p) => `${p.time.slice(11, 16)}=${p.aqi}`)
+    .join(", ");
+  const windows = s.bestWindows.map((w) => w.label).join(", ") || "none today";
+  return [
+    `City: ${s.city.name}`,
+    `Current AQI: ${s.current.aqi} (${cat.label})`,
+    `Next 8h AQI forecast: ${trend}`,
+    `Best outdoor windows: ${windows}`,
   ].join("\n");
 }

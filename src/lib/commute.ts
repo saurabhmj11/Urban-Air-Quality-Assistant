@@ -10,7 +10,7 @@
  * fully deterministic and unit-tested in commute.test.ts.
  */
 
-import type { CategoryKey, CityInfo } from "@/lib/aqi";
+import type { CategoryKey } from "@/lib/aqi";
 
 // ---------------------------------------------------------------------------
 // Types

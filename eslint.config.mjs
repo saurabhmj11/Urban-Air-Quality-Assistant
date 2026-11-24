@@ -1,50 +1,66 @@
 import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 import nextTypescript from "eslint-config-next/typescript";
-import { dirname } from "path";
-import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const eslintConfig = [
+  ...nextCoreWebVitals,
+  ...nextTypescript,
 
-const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
-  rules: {
-    // TypeScript rules
-    "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/no-unused-vars": "off",
-    "@typescript-eslint/no-non-null-assertion": "off",
-    "@typescript-eslint/ban-ts-comment": "off",
-    "@typescript-eslint/prefer-as-const": "off",
-    "@typescript-eslint/no-unused-disable-directive": "off",
-    
-    // React rules
-    "react-hooks/exhaustive-deps": "off",
-    "react-hooks/purity": "off",
-    "react/no-unescaped-entities": "off",
-    "react/display-name": "off",
-    "react/prop-types": "off",
-    "react-compiler/react-compiler": "off",
-    
-    // Next.js rules
-    "@next/next/no-img-element": "off",
-    "@next/next/no-html-link-for-pages": "off",
-    
-    // General JavaScript rules
-    "prefer-const": "off",
-    "no-unused-vars": "off",
-    "no-console": "off",
-    "no-debugger": "off",
-    "no-empty": "off",
-    "no-irregular-whitespace": "off",
-    "no-case-declarations": "off",
-    "no-fallthrough": "off",
-    "no-mixed-spaces-and-tabs": "off",
-    "no-redeclare": "off",
-    "no-undef": "off",
-    "no-unreachable": "off",
-    "no-useless-escape": "off",
+  {
+    // Vendored shadcn/ui primitives are third-party scaffolded code: they
+    // stay at the shared Next.js baseline and are not held to the
+    // first-party rules below.
+    files: ["src/components/ui/**/*.{ts,tsx}"],
   },
-}, {
-  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills", "scripts/**", "mini-services/**"]
-}];
+
+  {
+    // First-party BreathEasy code is held to a stricter standard:
+    // no `any`, no unused variables, no accidental console noise.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/components/ui/**"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          args: "after-used",
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrors: "none",
+        },
+      ],
+      "@typescript-eslint/no-non-null-assertion": "warn",
+      "prefer-const": "error",
+      "no-console": ["warn", { allow: ["warn", "error"] }],
+      "no-debugger": "error",
+      "no-empty": ["error", { allowEmptyCatch: true }],
+      "no-fallthrough": "error",
+      "no-redeclare": "error",
+      "no-unreachable": "error",
+      "no-useless-escape": "error",
+      "no-irregular-whitespace": "error",
+      "no-mixed-spaces-and-tabs": "error",
+      eqeqeq: ["error", "smart"],
+      "react-hooks/exhaustive-deps": "warn",
+      "react-hooks/purity": "warn",
+    },
+  },
+
+  {
+    ignores: [
+      "node_modules/**",
+      ".next/**",
+      "out/**",
+      "build/**",
+      "next-env.d.ts",
+      "examples/**",
+      "skills/**",
+      "scripts/**",
+      "mini-services/**",
+      "download/**",
+      "upload/**",
+      "agent-ctx/**",
+    ],
+  },
+];
 
 export default eslintConfig;

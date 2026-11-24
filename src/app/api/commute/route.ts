@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { chatComplete, BASE_SYSTEM_PROMPT } from "@/lib/ai";
-import { getAirQuality } from "@/lib/air-quality-server";
-import { CATEGORY_INFO, sensitivityFor, type AirQualitySnapshot } from "@/lib/aqi";
+import { getAirQuality, snapshotToContextBrief } from "@/lib/air-quality-server";
+import { sensitivityFor } from "@/lib/aqi";
 import { bestDeparture, fmtDuration, getZone, planCommute } from "@/lib/commute";
 import { commuteRequestSchema, parseBody } from "@/lib/validation";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
       const prompt = `Explain this commute comparison to a family in ${snapshot.city.name}.
 
 === LIVE AIR ===
-${snapshotToContext(snapshot)}
+${snapshotToContextBrief(snapshot)}
 
 === TRIP ===
 From ${originZone.name} to ${destinationZone.name} (${result.straightKm} km straight-line).
@@ -146,21 +146,4 @@ Requirements:
       { status: 500 }
     );
   }
-}
-
-/** Compact text summary of a snapshot for the narration prompt. */
-function snapshotToContext(s: AirQualitySnapshot): string {
-  const cat = CATEGORY_INFO[s.current.category];
-  const trend = s.hourly
-    .filter((p) => p.future)
-    .slice(0, 8)
-    .map((p) => `${p.time.slice(11, 16)}=${p.aqi}`)
-    .join(", ");
-  const windows = s.bestWindows.map((w) => w.label).join(", ") || "none today";
-  return [
-    `City: ${s.city.name}`,
-    `Current AQI: ${s.current.aqi} (${cat.label})`,
-    `Next 8h AQI forecast: ${trend}`,
-    `Best outdoor windows: ${windows}`,
-  ].join("\n");
 }

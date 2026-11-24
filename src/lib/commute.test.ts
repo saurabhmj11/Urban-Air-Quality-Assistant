@@ -286,7 +286,9 @@ describe("planCommute", () => {
     const greenest = res.options.reduce((a, b) => (a.co2Grams <= b.co2Grams ? a : b));
     expect(greenest.badges).toContain("Lowest emission");
     expect(greenest.mode).toBe("metro");
-    expect(greenest.co2Grams).toBeLessThan(res.options.find((o) => o.mode === "car")!.co2Grams);
+    const carCo2 = res.options.find((o) => o.mode === "car")?.co2Grams;
+    expect(carCo2).toBeDefined();
+    expect(greenest.co2Grams).toBeLessThan(carCo2 ?? Infinity);
   });
 
   it("keeps every score inside 0–100 with a clear spread between best and worst", () => {

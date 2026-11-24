@@ -79,6 +79,7 @@ src/
 5. **Graceful degradation**: 10-minute in-memory cache per city (60s for fallback data so live retries happen fast); deterministic diurnal-pattern simulation keeps the app fully functional offline. A `net.setDefaultAutoSelectFamily(true)` startup fix re-enables Happy Eyeballs on Node ≥ 23, where dual-stack fetches would otherwise time out in IPv6-less containers.
 6. **Privacy by design**: family health data never leaves the local SQLite DB; only derived sensitivity summaries enter prompts.
 7. **Defensive APIs**: every POST body is zod-validated (typed enums, length/numeric bounds); all AI endpoints are rate-limited per IP (429 + `Retry-After`); Prisma not-found errors map to 404 instead of 500; security headers (HSTS, X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy) are set in `next.config.ts`.
+8. **Lean, audited dependency tree**: the scaffold's 84 dependencies were audited against the actual import closure and cut to 33 — 33 unused shadcn/ui primitives and a dead Tailwind v3 config were deleted, every remaining Radix version is pinned, and `bun run verify` gates lint (strict first-party rules: no `any`, no unused vars, no empty blocks), a fully-strict `tsc --noEmit` and the test suite in one command.
 
 ## API quick reference
 
@@ -99,8 +100,10 @@ src/
 bun install
 bun run db:push        # create SQLite schema
 bun run dev            # http://localhost:3000
-bun run lint           # ESLint (clean)
-bun test               # unit tests for the domain logic
+bun run lint           # ESLint — first-party rules enforced (0 warnings)
+bun run typecheck      # tsc --noEmit (strict, no suppressed checks)
+bun test              # unit tests for the domain logic
+bun run verify         # lint + typecheck + tests in one gate
 ```
 
 No API keys required — Open-Meteo is keyless and the GenAI SDK is pre-configured.
@@ -113,7 +116,7 @@ No API keys required — Open-Meteo is keyless and the GenAI SDK is pre-configur
 
 ## Testing
 
-**76 unit tests** (`bun test`) cover the pure domain logic that everything else builds on:
+**87 unit tests** (`bun test`) cover the pure domain logic that everything else builds on:
 
 - **CPCB sub-index math** — exact band-boundary values for every pollutant, linear interpolation inside bands, clamping at 500, negative/NaN guards, monotonicity sweeps
 - **Category bands** — all six CPCB bands inclusive of upper bounds, complete colour/advice metadata
@@ -125,6 +128,7 @@ No API keys required — Open-Meteo is keyless and the GenAI SDK is pre-configur
 - **Commute planner** — haversine accuracy (known distances, symmetry), zone availability, mode feasibility caps (long trips exclude walk/cycle; metro needs stations at both ends), dose linearity and plausibility, CO2 factors, min-max scoring behaviour (single option scores 100; preference shifts promote zero-carbon modes over the solo car), badge assignment, sensitive-member warnings above 60 µg/m³
 - **Request validation** — zod schemas reject unknown cities/enums, oversized strings, bad roles, >12-turn history; schema city list proven in sync with the app catalogue
 - **Rate limiter** — allow-then-block windows, countdown, simulated-clock window reset, independent buckets, sweeper expiry, proxy-header IP extraction
+- **Prompt serializers** — the snapshot→context builders that ground every GenAI prompt: what is included, 12h-vs-8h forecast truncation, and the honest fallback wording when no breathable window exists
 
 The strategy: everything that turns raw numbers into advice is a pure, tested function; API routes stay thin validation + orchestration layers around them.
 

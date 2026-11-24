@@ -26,7 +26,7 @@ import { IndoorTab } from "@/components/air/indoor-tab";
 import { FamilyTab } from "@/components/air/family-tab";
 import { CommuteTab } from "@/components/air/commute-tab";
 import { AirQualitySnapshot, MemberDTO } from "@/components/air/types";
-import { CITIES, CATEGORY_INFO } from "@/lib/aqi";
+import { CITIES, CATEGORY_INFO, getCity } from "@/lib/aqi";
 
 const CITY_KEY = "breatheasy.city";
 
@@ -37,7 +37,7 @@ export function BreathEasyApp() {
   const [refreshing, setRefreshing] = useState(false);
   const [family, setFamily] = useState<MemberDTO[]>([]);
   const [tab, setTab] = useState("dashboard");
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   // Restore last-selected city
@@ -210,7 +210,7 @@ export function BreathEasyApp() {
           <TabsContent value="coach" className="data-[state=active]:animate-in data-[state=active]:fade-in data-[state=active]:slide-in-from-bottom-2 data-[state=active]:duration-300">
             <ChatTab
               cityId={cityId}
-              cityName={snapshot?.city.name ?? CITIES.find((c) => c.id === cityId)?.name ?? ""}
+              cityName={snapshot?.city.name ?? getCity(cityId).name}
               aqi={snapshot?.current.aqi ?? null}
               aqiLabel={cat?.label ?? null}
             />
@@ -228,7 +228,7 @@ export function BreathEasyApp() {
           <TabsContent value="commute" className="data-[state=active]:animate-in data-[state=active]:fade-in data-[state=active]:slide-in-from-bottom-2 data-[state=active]:duration-300">
             <CommuteTab
               cityId={cityId}
-              cityName={snapshot?.city.name ?? CITIES.find((c) => c.id === cityId)?.name ?? ""}
+              cityName={snapshot?.city.name ?? getCity(cityId).name}
               familyCount={family.length}
             />
           </TabsContent>

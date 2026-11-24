@@ -7,7 +7,7 @@
 import ZAI from "z-ai-web-dev-sdk";
 import { db } from "@/lib/db";
 import { getAirQuality, snapshotToContext } from "@/lib/air-quality-server";
-import { sensitivityFor, SENSITIVITY_BAND_META } from "@/lib/aqi";
+import { CATEGORY_INFO, sensitivityFor, SENSITIVITY_BAND_META } from "@/lib/aqi";
 
 /** Singleton ZAI client stored on globalThis to survive hot reloads. */
 // The SDK class has a private constructor, so InstanceType<typeof ZAI> fails
@@ -89,7 +89,6 @@ export async function buildAqiContext(cityId: string): Promise<{
   cityName: string;
 }> {
   const snap = await getAirQuality(cityId);
-  const { CATEGORY_INFO } = await import("@/lib/aqi");
   return {
     text: snapshotToContext(snap),
     aqi: snap.current.aqi,
