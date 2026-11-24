@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroup } from "@/components/ui/radio-group";
+import { RadioCard } from "@/components/ui/radio-card";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/hooks/use-toast";
 import { AGE_GROUP_LABELS, CONDITION_LABELS, MemberDTO } from "@/components/air/types";
@@ -113,14 +114,15 @@ export function FamilyTab({
             </Label>
             <RadioGroup value={ageGroup} onValueChange={setAgeGroup} className="grid grid-cols-2 gap-2">
               {Object.entries(AGE_GROUP_LABELS).map(([value, label]) => (
-                <Label
+                <RadioCard
                   key={value}
-                  htmlFor={`age-${value}`}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-normal transition-colors has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/10"
+                  id={`age-${value}`}
+                  value={value}
+                  hideIndicator
+                  className="items-center gap-2 py-2 text-sm"
                 >
-                  <RadioGroupItem id={`age-${value}`} value={value} className="sr-only" />
                   {label}
-                </Label>
+                </RadioCard>
               ))}
             </RadioGroup>
           </div>

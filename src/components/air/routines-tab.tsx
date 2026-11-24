@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroup } from "@/components/ui/radio-group";
+import { RadioCard } from "@/components/ui/radio-card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AiMarkdown } from "@/components/air/markdown";
@@ -117,17 +118,17 @@ export function RoutinesTab({
             </Label>
             <RadioGroup value={dayType} onValueChange={setDayType} className="gap-2">
               {DAY_TYPES.map((d) => (
-                <Label
+                <RadioCard
                   key={d.value}
-                  htmlFor={`day-${d.value}`}
-                  className="flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2.5 font-normal transition-colors has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/10"
+                  id={`day-${d.value}`}
+                  value={d.value}
+                  className="items-center justify-between"
                 >
                   <span className="flex flex-col">
                     <span className="text-sm font-medium">{d.label}</span>
                     <span className="text-xs text-muted-foreground">{d.hint}</span>
                   </span>
-                  <RadioGroupItem id={`day-${d.value}`} value={d.value} />
-                </Label>
+                </RadioCard>
               ))}
             </RadioGroup>
           </div>
@@ -138,18 +139,18 @@ export function RoutinesTab({
             </Label>
             <RadioGroup value={mode} onValueChange={setMode} className="gap-2">
               {MODES.map((m) => (
-                <Label
+                <RadioCard
                   key={m.value}
-                  htmlFor={`mode-${m.value}`}
-                  className="flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 font-normal transition-colors has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/10"
+                  id={`mode-${m.value}`}
+                  value={m.value}
+                  className="items-center gap-2.5"
                 >
-                  <m.icon className="h-4 w-4 shrink-0 text-primary" />
+                  <m.icon className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
                   <span className="flex flex-1 flex-col">
                     <span className="text-sm font-medium">{m.label}</span>
                     <span className="text-xs text-muted-foreground">{m.hint}</span>
                   </span>
-                  <RadioGroupItem id={`mode-${m.value}`} value={m.value} />
-                </Label>
+                </RadioCard>
               ))}
             </RadioGroup>
           </div>

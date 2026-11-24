@@ -174,7 +174,7 @@ export function BreathEasyApp() {
       </header>
 
       {/* Body */}
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:py-6">
+      <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:py-6">
         <Tabs value={tab} onValueChange={setTab} className="w-full">
           <TabsList className="custom-scroll mb-4 h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl p-1 sm:justify-center">
             {(

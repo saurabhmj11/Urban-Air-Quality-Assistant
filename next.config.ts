@@ -22,6 +22,27 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains",
           },
+          {
+            // Content-Security-Policy: everything is same-origin except
+            // nothing — the client only calls /api; fonts are self-hosted by
+            // next/font. 'unsafe-inline'/'unsafe-eval' for scripts cover the
+            // inline hydration bootstrap and dev HMR (no nonce infra here);
+            // frame-ancestors + object-src 'none' block embedding/plugin
+            // abuse outright.
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob:",
+              "font-src 'self' data:",
+              "connect-src 'self'",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'none'",
+            ].join("; "),
+          },
         ],
       },
       {

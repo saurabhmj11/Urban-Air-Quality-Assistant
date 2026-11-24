@@ -23,7 +23,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroup } from "@/components/ui/radio-group";
+import { RadioCard } from "@/components/ui/radio-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -225,15 +226,16 @@ export function IndoorTab({ cityId }: { cityId: string }) {
             </Label>
             <RadioGroup value={budget} onValueChange={setBudget} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {BUDGETS.map((b) => (
-                <Label
+                <RadioCard
                   key={b.value}
-                  htmlFor={`budget-${b.value}`}
-                  className="flex cursor-pointer flex-col rounded-lg border px-3 py-2.5 font-normal transition-colors has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/10"
+                  id={`budget-${b.value}`}
+                  value={b.value}
+                  hideIndicator
+                  className="flex-col"
                 >
                   <span className="text-sm font-medium">{b.label}</span>
                   <span className="text-xs text-muted-foreground">{b.hint}</span>
-                  <RadioGroupItem id={`budget-${b.value}`} value={b.value} className="sr-only" />
-                </Label>
+                </RadioCard>
               ))}
             </RadioGroup>
           </div>

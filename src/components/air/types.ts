@@ -1,6 +1,8 @@
 "use client";
 
 import type { AirQualitySnapshot, SensitivityResult } from "@/lib/aqi";
+import type { CategoryKey } from "@/lib/aqi";
+import type { CommuteOption, Zone } from "@/lib/commute";
 
 /** Family member as returned by /api/family (with computed sensitivity). */
 export interface MemberDTO {
@@ -38,6 +40,21 @@ export interface IndoorPlanDTO {
 }
 
 export type { AirQualitySnapshot };
+
+/** Response shape of POST /api/commute. */
+export interface CommuteResponse {
+  origin: Zone;
+  destination: Zone;
+  straightKm: number;
+  pm25: number;
+  pm25IsForecast: boolean;
+  bestWindow: { time: string; pm25: number } | null;
+  aqi: number;
+  aqiCategory: CategoryKey;
+  sensitiveMembers: string[];
+  options: CommuteOption[];
+  narration: string | null;
+}
 
 export const AGE_GROUP_LABELS: Record<string, string> = {
   child: "Child (0–12)",
