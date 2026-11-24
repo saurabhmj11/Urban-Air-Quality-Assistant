@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { buildAqiContext, buildFamilyContext, chatComplete, BASE_SYSTEM_PROMPT } from "@/lib/ai";
-import { parseBody, routineRequestSchema } from "@/lib/validation";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { guardRoute, routeError } from "@/lib/api";
+import { routineRequestSchema } from "@/lib/validation";
 
 export const maxDuration = 90;
 
@@ -23,27 +23,15 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  // --- Rate limit ---
-  const rl = rateLimit(`routine:${clientIp(req.headers)}`, RATE_LIMIT, RATE_WINDOW_MS);
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: `Slow down a little — try again in ${rl.resetInSec}s.` },
-      { status: 429, headers: { "Retry-After": String(rl.resetInSec) } }
-    );
-  }
-
-  // --- Validate ---
-  let raw: unknown;
-  try {
-    raw = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-  const parsed = parseBody(routineRequestSchema, raw);
-  if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
-  }
-  const { city, dayType, mode } = parsed.value;
+  const guard = await guardRoute(req, {
+    key: "routine",
+    limit: RATE_LIMIT,
+    windowMs: RATE_WINDOW_MS,
+    rateMessage: "Slow down a little",
+    schema: routineRequestSchema,
+  });
+  if (!guard.ok) return guard.response;
+  const { city, dayType, mode } = guard.value;
 
   try {
     const [aqiCtx, familyCtx] = await Promise.all([
@@ -99,10 +87,6 @@ Requirements:
 
     return NextResponse.json(routine, { status: 201 });
   } catch (err) {
-    console.error("routine route error:", err);
-    return NextResponse.json(
-      { error: "Routine generation failed. Please try again." },
-      { status: 502 }
-    );
+    return routeError("routine route", err, "Routine generation failed. Please try again.");
   }
 }

@@ -4,8 +4,8 @@ import { chatComplete, BASE_SYSTEM_PROMPT } from "@/lib/ai";
 import { getAirQuality, snapshotToContextBrief } from "@/lib/air-quality-server";
 import { sensitivityFor } from "@/lib/aqi";
 import { bestDeparture, fmtDuration, getZone, planCommute } from "@/lib/commute";
-import { commuteRequestSchema, parseBody } from "@/lib/validation";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { guardRoute, routeError } from "@/lib/api";
+import { commuteRequestSchema } from "@/lib/validation";
 
 export const maxDuration = 60;
 
@@ -14,27 +14,15 @@ const RATE_LIMIT = 12;
 const RATE_WINDOW_MS = 5 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
-  // --- Rate limit (protects the LLM budget) ---
-  const rl = rateLimit(`commute:${clientIp(req.headers)}`, RATE_LIMIT, RATE_WINDOW_MS);
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: `Too many commute plans. Try again in ${rl.resetInSec}s.` },
-      { status: 429, headers: { "Retry-After": String(rl.resetInSec) } }
-    );
-  }
-
-  // --- Validate ---
-  let raw: unknown;
-  try {
-    raw = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-  const parsed = parseBody(commuteRequestSchema, raw);
-  if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
-  }
-  const { city, origin, destination, departure, preference } = parsed.value;
+  const guard = await guardRoute(req, {
+    key: "commute",
+    limit: RATE_LIMIT,
+    windowMs: RATE_WINDOW_MS,
+    rateMessage: "Too many commute plans",
+    schema: commuteRequestSchema,
+  });
+  if (!guard.ok) return guard.response;
+  const { city, origin, destination, departure, preference } = guard.value;
 
   const originZone = getZone(city, origin);
   const destinationZone = getZone(city, destination);
@@ -140,10 +128,6 @@ Requirements:
       narration,
     });
   } catch (err) {
-    console.error("commute route error:", err);
-    return NextResponse.json(
-      { error: "Commute planning failed. Please try again." },
-      { status: 500 }
-    );
+    return routeError("commute route", err, "Commute planning failed. Please try again.", 500);
   }
 }

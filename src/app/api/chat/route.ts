@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildAqiContext, buildFamilyContext, chatComplete, BASE_SYSTEM_PROMPT } from "@/lib/ai";
-import { chatRequestSchema, parseBody } from "@/lib/validation";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { guardRoute, routeError } from "@/lib/api";
+import { chatRequestSchema } from "@/lib/validation";
 
 export const maxDuration = 60;
 
@@ -10,27 +10,15 @@ const RATE_LIMIT = 20;
 const RATE_WINDOW_MS = 5 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
-  // --- Rate limit ---
-  const rl = rateLimit(`chat:${clientIp(req.headers)}`, RATE_LIMIT, RATE_WINDOW_MS);
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: `The coach needs a breather. Try again in ${rl.resetInSec}s.` },
-      { status: 429, headers: { "Retry-After": String(rl.resetInSec) } }
-    );
-  }
-
-  // --- Validate ---
-  let raw: unknown;
-  try {
-    raw = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-  const parsed = parseBody(chatRequestSchema, raw);
-  if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
-  }
-  const { city, messages } = parsed.value;
+  const guard = await guardRoute(req, {
+    key: "chat",
+    limit: RATE_LIMIT,
+    windowMs: RATE_WINDOW_MS,
+    rateMessage: "The coach needs a breather",
+    schema: chatRequestSchema,
+  });
+  if (!guard.ok) return guard.response;
+  const { city, messages } = guard.value;
 
   try {
     const [aqiCtx, familyCtx] = await Promise.all([
@@ -53,10 +41,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ reply });
   } catch (err) {
-    console.error("chat route error:", err);
-    return NextResponse.json(
-      { error: "The coach is temporarily unavailable. Please try again." },
-      { status: 502 }
-    );
+    return routeError("chat route", err, "The coach is temporarily unavailable. Please try again.");
   }
 }

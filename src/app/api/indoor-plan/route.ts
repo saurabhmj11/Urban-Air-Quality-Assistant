@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { buildAqiContext, chatComplete, BASE_SYSTEM_PROMPT } from "@/lib/ai";
-import { indoorPlanRequestSchema, parseBody } from "@/lib/validation";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { guardRoute, routeError } from "@/lib/api";
+import { indoorPlanRequestSchema } from "@/lib/validation";
 
 export const maxDuration = 90;
 
@@ -11,27 +11,15 @@ const RATE_LIMIT = 6;
 const RATE_WINDOW_MS = 5 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
-  // --- Rate limit ---
-  const rl = rateLimit(`indoor:${clientIp(req.headers)}`, RATE_LIMIT, RATE_WINDOW_MS);
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: `Slow down a little — try again in ${rl.resetInSec}s.` },
-      { status: 429, headers: { "Retry-After": String(rl.resetInSec) } }
-    );
-  }
-
-  // --- Validate ---
-  let raw: unknown;
-  try {
-    raw = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-  const parsed = parseBody(indoorPlanRequestSchema, raw);
-  if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
-  }
-  const { city, rooms, hasPurifier, hasAC, budget, cooking, notes } = parsed.value;
+  const guard = await guardRoute(req, {
+    key: "indoor",
+    limit: RATE_LIMIT,
+    windowMs: RATE_WINDOW_MS,
+    rateMessage: "Slow down a little",
+    schema: indoorPlanRequestSchema,
+  });
+  if (!guard.ok) return guard.response;
+  const { city, rooms, hasPurifier, hasAC, budget, cooking, notes } = guard.value;
 
   try {
     const aqiCtx = await buildAqiContext(city);
@@ -86,10 +74,6 @@ Requirements:
 
     return NextResponse.json(plan, { status: 201 });
   } catch (err) {
-    console.error("indoor-plan route error:", err);
-    return NextResponse.json(
-      { error: "Indoor plan generation failed. Please try again." },
-      { status: 502 }
-    );
+    return routeError("indoor-plan route", err, "Indoor plan generation failed. Please try again.");
   }
 }

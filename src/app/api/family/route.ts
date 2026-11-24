@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { sensitivityFor } from "@/lib/aqi";
-import { memberCreateSchema, parseBody } from "@/lib/validation";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { guardRoute } from "@/lib/api";
+import { memberCreateSchema } from "@/lib/validation";
 
 /** 30 member writes per 5 minutes per IP (generous — this is local data). */
 const RATE_LIMIT = 30;
@@ -23,27 +23,15 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  // --- Rate limit ---
-  const rl = rateLimit(`family:${clientIp(req.headers)}`, RATE_LIMIT, RATE_WINDOW_MS);
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: `Too many changes. Try again in ${rl.resetInSec}s.` },
-      { status: 429, headers: { "Retry-After": String(rl.resetInSec) } }
-    );
-  }
-
-  // --- Validate ---
-  let raw: unknown;
-  try {
-    raw = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-  const parsed = parseBody(memberCreateSchema, raw);
-  if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
-  }
-  const { name, ageGroup, conditions } = parsed.value;
+  const guard = await guardRoute(req, {
+    key: "family",
+    limit: RATE_LIMIT,
+    windowMs: RATE_WINDOW_MS,
+    rateMessage: "Too many changes",
+    schema: memberCreateSchema,
+  });
+  if (!guard.ok) return guard.response;
+  const { name, ageGroup, conditions } = guard.value;
 
   try {
     const member = await db.familyMember.create({
