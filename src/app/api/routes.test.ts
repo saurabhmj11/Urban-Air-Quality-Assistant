@@ -269,6 +269,18 @@ describe("GET/POST /api/family", () => {
   });
 });
 
+describe("GET /api/routine", () => {
+  it("returns the persisted routine history, newest first", async () => {
+    const { status, body } = await get("/api/routine");
+    expect(status).toBe(200);
+    const routines = body as Array<{ city: string; aqi: number; content: string }>;
+    expect(routines.length).toBeGreaterThan(0);
+    expect(routines[0].city).toBe("Delhi");
+    expect(routines[0].aqi).toBe(194);
+    expect(routines[0].content).toBe("plan");
+  });
+});
+
 describe("POST /api/routine", () => {
   const valid = { city: "delhi", dayType: "workday", mode: "balanced" };
 
@@ -284,6 +296,17 @@ describe("POST /api/routine", () => {
   it("rejects an invalid day type with 400", async () => {
     const { status } = await post("/api/routine", { ...valid, dayType: "holiday" });
     expect(status).toBe(400);
+  });
+
+  it("maps an LLM failure to 502 with the friendly message", async () => {
+    chatShouldThrow = true;
+    try {
+      const { status, body } = await post("/api/routine", valid);
+      expect(status).toBe(502);
+      expect((body as { error: string }).error).toContain("Please try again");
+    } finally {
+      chatShouldThrow = false;
+    }
   });
 });
 

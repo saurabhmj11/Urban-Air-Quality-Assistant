@@ -1,5 +1,16 @@
 import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 import nextTypescript from "eslint-config-next/typescript";
+import jsxA11y from "eslint-plugin-jsx-a11y";
+
+// Full jsx-a11y "recommended" preset enforced on first-party code.
+// eslint-config-next already registers the plugin and enables a subset of
+// its rules; enumerating the preset here makes EVERY recommended rule an
+// error, so a regression like a missing alt text or a label without a
+// control fails `bun run lint` (and CI) outright.
+const a11yRecommended = {};
+for (const [name, rule] of Object.entries(jsxA11y.rules)) {
+  if (rule.meta?.docs?.recommended) a11yRecommended[`jsx-a11y/${name}`] = "error";
+}
 
 const eslintConfig = [
   ...nextCoreWebVitals,
@@ -18,6 +29,7 @@ const eslintConfig = [
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/components/ui/**"],
     rules: {
+      ...a11yRecommended,
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": [
         "error",

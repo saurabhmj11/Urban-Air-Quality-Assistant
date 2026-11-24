@@ -1,0 +1,56 @@
+# Continuous integration — the same quality gate the README documents
+# (`bun run verify`: ESLint incl. the full jsx-a11y recommended preset,
+# strict TypeScript, the whole bun test suite with coverage), plus a
+# clean-machine production build so nothing ships red.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    name: Lint, types, tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install dependencies (locked)
+        run: bun install --frozen-lockfile
+
+      - name: ESLint (full jsx-a11y recommended preset enabled)
+        run: bun run lint
+
+      - name: TypeScript strict typecheck
+        run: bun run typecheck
+
+      - name: Tests with coverage
+        run: bun test src/ --coverage
+
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install dependencies (locked)
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bunx prisma generate
+        env:
+          DATABASE_URL: "file:./ci.db"
+
+      - name: Next.js production build
+        run: bun run build
+        env:
+          DATABASE_URL: "file:./ci.db"

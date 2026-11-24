@@ -78,7 +78,7 @@ src/
 4. **Deterministic-first GenAI**: commute scores, doses and emissions come from pure functions (`src/lib/commute.ts`) with published micro-environment and per-passenger-km factors; the LLM narrates but never computes. If the LLM is down, the ranking still ships.
 5. **Graceful degradation**: 10-minute in-memory cache per city (60s for fallback data so live retries happen fast); deterministic diurnal-pattern simulation keeps the app fully functional offline. A `net.setDefaultAutoSelectFamily(true)` startup fix re-enables Happy Eyeballs on Node ≥ 23, where dual-stack fetches would otherwise time out in IPv6-less containers.
 6. **Privacy by design**: family health data never leaves the local SQLite DB; only derived sensitivity summaries enter prompts.
-7. **Defensive APIs, mirrored client and server**: every JSON POST route shares one guard (`src/lib/api.ts`) — rate limit → JSON parse → zod schema, returning a typed body or a ready error response, so routes hold only domain logic; unknown city ids get a 400 listing valid ids instead of silently serving Delhi data; all AI endpoints are rate-limited per IP (429 + `Retry-After`); upstream/LLM failures map to 502 and local failures to 500 via a single `routeError` helper; Prisma not-found errors map to 404; security headers (HSTS, X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy and a full Content-Security-Policy) are set in `next.config.ts`. On the client, `src/lib/client.ts` (`postJson`/`getJson`/`deleteJson`/`userMessage`) is the single typed fetch layer every tab uses — the server's human-readable error envelope flows straight into the UI. Guard, client layer, animation math and the route handlers themselves all have direct tests (135 total).
+7. **Defensive APIs, mirrored client and server**: every JSON POST route shares one guard (`src/lib/api.ts`) — rate limit → JSON parse → zod schema, returning a typed body or a ready error response, so routes hold only domain logic; unknown city ids get a 400 listing valid ids instead of silently serving Delhi data; all AI endpoints are rate-limited per IP (429 + `Retry-After`); upstream/LLM failures map to 502 and local failures to 500 via a single `routeError` helper; Prisma not-found errors map to 404; security headers (HSTS, X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy and a full Content-Security-Policy) are set in `next.config.ts`. On the client, `src/lib/client.ts` (`postJson`/`getJson`/`deleteJson`/`userMessage`) is the single typed fetch layer every tab uses — the server's human-readable error envelope flows straight into the UI. Guard, client layer, animation math, the route handlers themselves and the full live-data pipeline (Open-Meteo fetch with retry, CPCB unit conversion, hourly trimming, per-city caching, offline fallback) all have direct tests (148 total).
 8. **Lean, audited dependency tree**: the scaffold's 84 dependencies were audited against the actual import closure and cut to 33 — 33 unused shadcn/ui primitives and a dead Tailwind v3 config were deleted, every remaining Radix version is pinned, and `bun run verify` gates lint (strict first-party rules: no `any`, no unused vars, no empty blocks), a fully-strict `tsc --noEmit` and the test suite in one command.
 
 ## API quick reference
@@ -103,10 +103,13 @@ bun run dev            # http://localhost:3000
 bun run lint           # ESLint — first-party rules enforced (0 warnings)
 bun run typecheck      # tsc --noEmit (strict, no suppressed checks)
 bun test              # unit tests for the domain logic
+bun run test:coverage  # test suite with a line/function coverage report
 bun run verify         # lint + typecheck + tests in one gate
 ```
 
 No API keys required — Open-Meteo is keyless and the GenAI SDK is pre-configured.
+
+`.github/workflows/ci.yml` runs the same gate on every push/PR — lint (with the full jsx-a11y recommended preset enforced on first-party code), strict typecheck, the test suite with coverage, and a clean-machine production build.
 
 ### Deploying
 
@@ -116,7 +119,7 @@ No API keys required — Open-Meteo is keyless and the GenAI SDK is pre-configur
 
 ## Testing
 
-**135 tests** (`bun test`) cover the pure domain logic, the shared request plumbing and the route handlers end-to-end:
+**148 tests** (`bun test`, 91.8% line / 96.4% function coverage over the tested modules — `bun run test:coverage`) cover the pure domain logic, the shared request plumbing and the route handlers end-to-end:
 
 - **CPCB sub-index math** — exact band-boundary values for every pollutant, linear interpolation inside bands, clamping at 500, negative/NaN guards, monotonicity sweeps
 - **Category bands** — all six CPCB bands inclusive of upper bounds, complete colour/advice metadata
@@ -130,13 +133,14 @@ No API keys required — Open-Meteo is keyless and the GenAI SDK is pre-configur
 - **Rate limiter** — allow-then-block windows, countdown, simulated-clock window reset, independent buckets, sweeper expiry, proxy-header IP extraction
 - **Prompt serializers** — the snapshot→context builders that ground every GenAI prompt: what is included, 12h-vs-8h forecast truncation, and the honest fallback wording when no breathable window exists
 - **Shared request plumbing** — the route guard (429 + `Retry-After`, per-IP isolation, JSON/schema rejections) and the typed client fetch layer (error-envelope propagation, non-JSON fallbacks, network wrapping) plus the count-up easing math
-- **Route handlers (integration)** — every API endpoint is invoked with real `NextRequest`s against a mocked db/LLM layer: happy paths assert response shape (sensitivity computed, conditions joined, homeInfo built), guard rejections (bad enums, out-of-bounds rooms, same-zone trips), 502 LLM-failure mapping, and the deterministic commute ranking still shipping with `narration: null` when the LLM is down
+- **Route handlers (integration)** — every API endpoint is invoked with real `NextRequest`s against a mocked db/LLM layer: happy paths assert response shape (sensitivity computed, conditions joined, homeInfo built), guard rejections (bad enums, out-of-bounds rooms, same-zone trips), 502 LLM-failure mapping, routine history served newest-first, and the deterministic commute ranking still shipping with `narration: null` when the LLM is down
+- **Live-data pipeline** — `getAirQuality` with a stubbed Open-Meteo: endpoint/parameter contract, the µg/m³→mg/m³ CO conversion, overall-AQI derivation from the in-overall drivers, null-hour skipping and 24+24 hourly trimming, the current-hour boundary case, per-city caching (no refetch, same snapshot object), one-retry-then-fallback on HTTP 500, incomplete-payload and network-failure fallbacks, and retry recovery
 
 The strategy: everything that turns raw numbers into advice is a pure, tested function; API routes stay thin validation + orchestration layers around them.
 
 ## Accessibility
 
-Semantic landmarks (`header`/`main`/`footer`/`nav`-style tabs), a skip-to-content link, labelled form controls, `aria-live` regions for async commute results, `role="alert"` errors, `aria-busy` loading states, visible focus rings, keyboard-operable radio/select/toggle groups (the selectable cards are real radio inputs — screen readers announce them as radios with their labels), 44px touch targets, colour-independent status (text + colour always pair), and full light/dark themes.
+Semantic landmarks (`header`/`main`/`footer`/`nav`-style tabs), a skip-to-content link, labelled form controls, `aria-live` regions for async commute results, `role="alert"` errors, `aria-busy` loading states, visible focus rings, keyboard-operable radio/select/toggle groups (the selectable cards are real radio inputs — screen readers announce them as radios with their labels), 44px touch targets, colour-independent status (text + colour always pair), and full light/dark themes. The entire jsx-a11y "recommended" rule preset is enforced as ESLint errors in CI, so every first-party component is machine-checked against the full rule list on each build.
 
 ## Limitations & next steps
 
