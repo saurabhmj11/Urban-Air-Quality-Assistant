@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Application shell — city picker, live-AQI ambient background, tab
+ * navigation across the six features, and data loading for the whole
+ * app (air snapshot + family profile via src/lib/client.ts).
+ */
+
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import {
   Activity,
@@ -27,6 +33,7 @@ import { FamilyTab } from "@/components/air/family-tab";
 import { CommuteTab } from "@/components/air/commute-tab";
 import { AirQualitySnapshot, MemberDTO } from "@/components/air/types";
 import { CITIES, CATEGORY_INFO, getCity } from "@/lib/aqi";
+import { getJson } from "@/lib/client";
 
 const CITY_KEY = "breatheasy.city";
 
@@ -49,8 +56,7 @@ export function BreathEasyApp() {
 
   const loadFamily = useCallback(async () => {
     try {
-      const res = await fetch("/api/family");
-      if (res.ok) setFamily(await res.json());
+      setFamily(await getJson<MemberDTO[]>("/api/family"));
     } catch {
       /* non-fatal */
     }
@@ -59,9 +65,8 @@ export function BreathEasyApp() {
   const loadAir = useCallback(async (showSpinner = false) => {
     if (showSpinner) setRefreshing(true);
     try {
-      const res = await fetch(`/api/air-quality?city=${cityId}`);
-      if (res.ok) setSnapshot(await res.json());
-      else setSnapshot(null);
+      const snap = await getJson<AirQualitySnapshot>(`/api/air-quality?city=${cityId}`);
+      setSnapshot(snap);
     } catch {
       setSnapshot(null);
     } finally {

@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Coach chat tab — free-text conversation with the context-grounded GenAI
+ * coach (live AQI + family profile injected server-side). Optimistic
+ * user-turn rendering, auto-scroll and quick prompts.
+ */
+
 import { useEffect, useRef, useState } from "react";
 import { Bot, Send, Sparkles, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { AiMarkdown } from "@/components/air/markdown";
 import { ChatTurn } from "@/components/air/types";
+import { postJson, userMessage } from "@/lib/client";
 
 const QUICK_PROMPTS = [
   "Can my kids play outside this evening?",
@@ -45,16 +52,14 @@ export function ChatTab({
     setTurns(next);
     setBusy(true);
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ city: cityId, messages: next }),
+      const data = await postJson<{ reply: string }>("/api/chat", {
+        city: cityId,
+        messages: next,
       });
-      const data = await res.json();
-      if (!res.ok || !data.reply) throw new Error(data.error || "Chat failed");
+      if (!data.reply) throw new Error("Chat failed");
       setTurns([...next, { role: "assistant", content: data.reply }]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+      setError(userMessage(e, "Something went wrong. Please try again."));
     } finally {
       setBusy(false);
     }

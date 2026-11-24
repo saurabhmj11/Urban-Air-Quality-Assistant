@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Routines tab — generates a personalised daily smog routine (workday /
+ * weekend / school day, three focus modes) with the live AQI and family
+ * profile as context, and shows the last 8 saved plans as history.
+ */
+
 import { useEffect, useState } from "react";
 import { CalendarDays, ChevronDown, Leaf, Loader2, Shield, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AiMarkdown } from "@/components/air/markdown";
 import { RoutineDTO } from "@/components/air/types";
 import { CATEGORY_INFO, CategoryKey } from "@/lib/aqi";
+import { getJson, postJson, userMessage } from "@/lib/client";
 
 const DAY_TYPES = [
   { value: "workday", label: "Workday", hint: "Office + school runs" },
@@ -59,22 +66,22 @@ export function RoutinesTab({
   const [history, setHistory] = useState<RoutineDTO[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
+  // Load the routine history once (best-effort — latest plan is shown first).
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/routine");
-        const data = await res.json();
-        if (!cancelled && res.ok && Array.isArray(data)) {
+    getJson<RoutineDTO[]>("/api/routine")
+      .then((data) => {
+        if (!cancelled && Array.isArray(data)) {
           setHistory(data);
           if (data.length > 0) setCurrent(data[0]);
         }
-      } catch {
+      })
+      .catch(() => {
         /* history is best-effort */
-      } finally {
+      })
+      .finally(() => {
         if (!cancelled) setLoadingHistory(false);
-      }
-    })();
+      });
     return () => {
       cancelled = true;
     };
@@ -84,17 +91,11 @@ export function RoutinesTab({
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/routine", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ city: cityId, dayType, mode }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Generation failed");
+      const data = await postJson<RoutineDTO>("/api/routine", { city: cityId, dayType, mode });
       setCurrent(data);
       setHistory((h) => [data, ...h].slice(0, 8));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not generate routine. Try again.");
+      setError(userMessage(e, "Could not generate routine. Try again."));
     } finally {
       setBusy(false);
     }

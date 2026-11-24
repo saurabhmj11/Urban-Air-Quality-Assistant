@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * Commute planner tab — pick origin/destination areas, then every travel
+ * mode is ranked by the deterministic engine (src/lib/commute.ts) on
+ * inhaled PM2.5 dose, CO2 and trip time; the GenAI layer narrates the
+ * trade-offs but never computes the numbers.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -42,6 +49,7 @@ import {
   type Zone,
 } from "@/lib/commute";
 import { CATEGORY_INFO, type CategoryKey } from "@/lib/aqi";
+import { postJson, userMessage } from "@/lib/client";
 
 interface CommuteResponse {
   origin: Zone;
@@ -234,22 +242,16 @@ export function CommuteTab({
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/commute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          city: cityId,
-          origin: originId,
-          destination: destinationId,
-          departure,
-          preference,
-        }),
+      const data = await postJson<CommuteResponse>("/api/commute", {
+        city: cityId,
+        origin: originId,
+        destination: destinationId,
+        departure,
+        preference,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Planning failed");
       setResult(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not plan this trip. Try again.");
+      setError(userMessage(e, "Could not plan this trip. Try again."));
     } finally {
       setBusy(false);
     }

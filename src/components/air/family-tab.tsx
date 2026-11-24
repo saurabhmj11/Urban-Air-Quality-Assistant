@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Family tab — the local health circle: add/remove members (age group +
+ * conditions), each shown with a computed sensitivity band and today's
+ * risk verdict. Data stays in the local SQLite DB.
+ */
+
 import { useState } from "react";
 import { HeartPulse, Loader2, Plus, Trash2, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AGE_GROUP_LABELS, CONDITION_LABELS, MemberDTO } from "@/components/air/types";
 import { SENSITIVITY_BAND_META, memberRiskVerdict } from "@/lib/aqi";
 import type { CategoryKey } from "@/lib/aqi";
+import { postJson, deleteJson, userMessage } from "@/lib/client";
 
 export function FamilyTab({
   family,
@@ -42,13 +49,11 @@ export function FamilyTab({
     }
     setBusy(true);
     try {
-      const res = await fetch("/api/family", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), ageGroup, conditions }),
+      const data = await postJson<MemberDTO>("/api/family", {
+        name: name.trim(),
+        ageGroup,
+        conditions,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to add");
       setName("");
       setConditions([]);
       setAgeGroup("adult");
@@ -56,7 +61,7 @@ export function FamilyTab({
       toast({ title: `${data.name} added to your family circle` });
     } catch (e) {
       toast({
-        title: e instanceof Error ? e.message : "Failed to add member",
+        title: userMessage(e, "Failed to add member"),
         variant: "destructive",
       });
     } finally {
@@ -67,8 +72,7 @@ export function FamilyTab({
   async function removeMember(id: string, memberName: string) {
     setDeletingId(id);
     try {
-      const res = await fetch(`/api/family/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      await deleteJson(`/api/family/${id}`);
       onChanged();
       toast({ title: `${memberName} removed` });
     } catch {

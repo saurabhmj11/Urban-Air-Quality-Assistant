@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Dashboard tab — the city's live air story: AQI gauge hero with best
+ * outdoor windows and per-member risk verdicts, the pollutant breakdown
+ * cards, and the past-24h / next-24h PM2.5 AQI chart with a "now" marker.
+ */
+
 import { useMemo } from "react";
 import {
   Area,

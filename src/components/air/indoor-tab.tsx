@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Indoor plan tab — describes the home (rooms, purifier, AC, cooking fuel,
+ * budget) and generates a room-by-room indoor air protection plan, plus a
+ * curated library of instant offline DIY hacks.
+ */
+
 import { useState } from "react";
 import {
   CookingPot,
@@ -23,6 +29,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { AiMarkdown } from "@/components/air/markdown";
+import { postJson, userMessage } from "@/lib/client";
 import { IndoorPlanDTO } from "@/components/air/types";
 
 // ---------------------------------------------------------------------------
@@ -104,16 +111,18 @@ export function IndoorTab({ cityId }: { cityId: string }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/indoor-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ city: cityId, rooms, hasPurifier, hasAC, budget, cooking, notes }),
+      const data = await postJson<IndoorPlanDTO>("/api/indoor-plan", {
+        city: cityId,
+        rooms,
+        hasPurifier,
+        hasAC,
+        budget,
+        cooking,
+        notes,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Generation failed");
       setPlan(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not generate plan. Try again.");
+      setError(userMessage(e, "Could not generate plan. Try again."));
     } finally {
       setBusy(false);
     }
